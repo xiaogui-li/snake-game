@@ -5,7 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,28 +20,14 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Cache Buildozer dependencies
-      uses: actions/cache@v3
+    - name: Cache Buildozer
+      uses: actions/cache@v4
       with:
         path: |
-          ~/.buildozer
-          ~/.android
+          ~/.buildozer/android/platform
         key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
           ${{ runner.os }}-buildozer-
-    
-    - name: Set up Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-    
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-    
-    - name: Accept Android licenses
-      run: |
-        yes | sdkmanager --licenses || true
     
     - name: Install system dependencies
       run: |
@@ -64,19 +50,27 @@ jobs:
           libssl-dev \
           automake
     
-    - name: Install Buildozer and dependencies
+    - name: Install Buildozer
       run: |
-        python -m venv ~/buildozer_env
-        source ~/buildozer_env/bin/activate
+        python -m venv ~/venv
+        source ~/venv/bin/activate
         pip install --upgrade pip
         pip install buildozer cython
         
     - name: Build APK
       run: |
-        source ~/buildozer_env/bin/activate
+        source ~/venv/bin/activate
+        # Pre-accept all Android SDK licenses
+        mkdir -p ~/.android
+        echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.android/repositories.cfg
+        # Set environment to auto-accept licenses
+        export ANDROID_SDK_ROOT=~/.buildozer/android/platform/android-sdk
+        yes | buildozer android debug || true
+        # Try again
         buildozer android debug
       env:
         BUILDOZER_WARN_ON_ROOT: 0
+        ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -93,11 +87,11 @@ jobs:
         tag_name: v${{ github.run_number }}
         name: Snake Game v${{ github.run_number }}
         body: |
-          贪吃蛇游戏 APK 自动构建
+          贪吃蛇游戏 APK
           
-          安装说明:
-          1. 下载 .apk 文件
-          2. 在 Android 手机上允许"安装未知来源应用"
-          3. 安装并游玩!
+          安装方法:
+          1. 下载 APK 文件
+          2. 允许"安装未知应用"
+          3. 安装游玩!
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
