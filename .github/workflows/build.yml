@@ -1,0 +1,91 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Cache Buildozer dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.buildozer
+          ~/.android
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          python3-pip \
+          python3-venv \
+          git \
+          zip \
+          unzip \
+          openjdk-17-jdk \
+          autoconf \
+          libtool \
+          pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libtinfo5 \
+          cmake \
+          libffi-dev \
+          libssl-dev \
+          automake
+    
+    - name: Install Buildozer and dependencies
+      run: |
+        python -m venv ~/buildozer_env
+        source ~/buildozer_env/bin/activate
+        pip install --upgrade pip
+        pip install buildozer cython
+        
+    - name: Build APK
+      run: |
+        source ~/buildozer_env/bin/activate
+        buildozer android debug
+      env:
+        BUILDOZER_WARN_ON_ROOT: 0
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: snake-game-apk
+        path: bin/*.apk
+        retention-days: 30
+    
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: bin/*.apk
+        tag_name: v${{ github.run_number }}
+        name: Snake Game v${{ github.run_number }}
+        body: |
+          贪吃蛇游戏 APK 自动构建
+          
+          安装说明:
+          1. 下载 .apk 文件
+          2. 在 Android 手机上允许"安装未知来源应用"
+          3. 安装并游玩!
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
