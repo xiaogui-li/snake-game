@@ -22,7 +22,7 @@ jobs:
           -w /app \
           -e BUILDOZER_WARN_ON_ROOT=1 \
           kivy/buildozer:latest \
-          bash -c "echo 'y' | buildozer android debug"
+          bash -c "yes | buildozer android debug"
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
