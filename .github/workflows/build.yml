@@ -21,8 +21,9 @@ jobs:
           -v "${PWD}:/app" \
           -w /app \
           -e BUILDOZER_WARN_ON_ROOT=1 \
+          -e BUILDOZER_ALLOW_ROOT=1 \
           kivy/buildozer:latest \
-          bash -c "yes | buildozer android debug"
+          /bin/bash -c "export BUILDOZER_WARN_ON_ROOT=1 && export BUILDOZER_ALLOW_ROOT=1 && yes | buildozer android debug"
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
